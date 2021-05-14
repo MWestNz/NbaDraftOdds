@@ -2,6 +2,7 @@
 
 import copy
 
+#Fixes the odds off lottery balls where there is a tie, #FIXME as of now doesn't do the coin flip, just splits balls down the middle
 def ties(tie_list, odds):
     tied_odds = odds.copy()
     for tie in tie_list:
@@ -15,6 +16,7 @@ def ties(tie_list, odds):
 
     return tied_odds
 
+#After a lottery pick remove the chance of that team picking again
 def new_ball_odds(picked, current_odds):
     new_odds = current_odds.copy()
     for pick in picked:
@@ -22,9 +24,11 @@ def new_ball_odds(picked, current_odds):
 
     return new_odds
 
+#The chance of a team picking next
 def get_next_pick_chance(team_spot, odds):
     return odds[team_spot]/sum(odds)
 
+#Calculates the list of possible top 4 picks based on lottery odds. #FIXME Currently uses globals defined in main. 
 def get_top_4_odds():
 
     first = []
@@ -70,6 +74,7 @@ def get_top_4_odds():
 
     return fourth
 
+#Get the remaining lottery picks for all possible top 4 combinations. #FIXME Add in ties.
 def get_rest_odds(odds_list, ties, t_arr, tied_odds):
     for item in odds_list:
         left = list(range(14))
@@ -84,22 +89,26 @@ def get_rest_odds(odds_list, ties, t_arr, tied_odds):
         
     return odds_list
 
+#Get the sum off all chances given set conditions.
 def odds_of_result(odds_list, with_dict, without_dict=[], one_of_list=[]):
     #Each object in the param dicts has a team and a pick
     
     def test_conds(sitch):
         ret = True
         if with_dict != []:
+            #All of these
             for item in with_dict:
                 ret = sitch['picks'][item['pick']]['name'] == item['name']
                 if ret == False:
                     return ret
         if without_dict != []:
+            #None of these
             for item in without_dict:
                 ret = sitch['picks'][item['pick']]['name'] != item['name']
                 if ret == False:
                     return ret
         if one_of_list != []:
+            #At least one of these.
             ret = False
             for item in one_of_list:
                 ret = sitch['picks'][item['pick']]['name'] == item['name']
@@ -111,31 +120,42 @@ def odds_of_result(odds_list, with_dict, without_dict=[], one_of_list=[]):
     return odds
 
 if __name__ == "__main__":
-    #Remember pick 1 would be index 0. So I add padding at 0
+    #Remember pick 1 would be index 0. So I add padding at 0. These are the base odds before ties.
     Ball_Odds = [0, 140, 140, 140, 125, 105, 90, 75, 60, 45, 30, 20, 15, 10, 5]
-    t_arr = ['Rockets', 'Pistons', 'Magic', 'Thunder', 'Wolves', 'Cavs', 'Raptors', 'Bulls', 'Pelicans', 'Kings', 'Wizards',
+
+    #This is the current order of the teams, ignoring ties which I have semi implemented, but not the coin toss if both the tied teams miss top 4.
+    t_arr = ['Rockets', 'Pistons', 'Thunder', 'Magic', 'Wolves', 'Cavs', 'Raptors', 'Bulls', 'Pelicans', 'Kings', 'Wizards',
             'Spurs', 'Pacers', 'Grizz']
-    Current_odds = copy.deepcopy(Ball_Odds)
+    #List of teams tied, and the places. Bit untidy but works for now.
+    ties_list = [[3,4], [5,6], [9,10], [12,13]] 
+    #make a copy incase we do multiple calculations in one run. And calclulate the current ties.
+    current_odds = copy.deepcopy(Ball_Odds)
+    tied_odds = ties(ties_list, current_odds)
+
+    #Set up teams object, little bit ugly, will be a better way of doing this but just want to get something working for now.
     teams = [{"name":t_arr[0], "position":1}, {"name":t_arr[1], "position":2}, {"name":t_arr[2], "position":3}, {"name":t_arr[3], "position":4},
         {"name":t_arr[4], "position":5}, {"name":t_arr[5], "position":6}, {"name":t_arr[6], "position":7}, {"name":t_arr[7], "position":8},
         {"name":t_arr[8], "position":9}, {"name":t_arr[9], "position":10}, {"name":t_arr[10], "position":11}, {"name":t_arr[11], "position":12},
         {"name":t_arr[12], "position":13}, {"name":t_arr[13], "position":14}]
-    tied_odds = ties([[3,4], [5,6], [9,10], [12,13]], Current_odds)
-    current_sum = sum(tied_odds)
-
+    
+    #Get odds for the first pick.
     first_pick_odds = []
     for team in teams:
         first_pick_odds.append(get_next_pick_chance(team['position'], tied_odds))
 
+    #Get the list off possible top 4 picks and the odds of each situation
     odds_list = get_top_4_odds()
 
+    #Populate the rest of the lottery in ranking order. (#TODO This currently takes in Ties but doesn't use that parameter)
     rest = get_rest_odds(odds_list, ties, t_arr, tied_odds)
     
+
+    #OPTIONS SECTION
     on_list = [
         {'name':'Thunder', 'pick':'1st'},
         {'name':'Rockets', 'pick':'5th'}
     ]
-    odds_of_1_5 = odds_of_result(rest, on_list, [], [])
+    odds_of_1_5 = odds_of_result(rest, on_list, [], []) #Chance of Thunder getting 1 and 5
 
     on_list = [
         {'name':'Thunder', 'pick':'2nd'},
@@ -242,6 +262,8 @@ if __name__ == "__main__":
     ]
 
     odds_of_8_5 = odds_of_result(rest, on_list)
+
+    #Simple print output for now.
 
     print("Thunder Pick:")
     print(f"1st: alone: {100*odds_of_1_alone:.2f}% and with 5: {100*odds_of_1_5:.2f}%")
